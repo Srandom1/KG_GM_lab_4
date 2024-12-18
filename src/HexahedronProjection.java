@@ -112,7 +112,7 @@ public class HexahedronProjection extends JFrame {
             for (int t = 0; t < edges.length; t++) {
                 int[] edge = edges[t];
                 // Вычисляем вектор нормали поверхности грани
-                double[] normal = calculateNormal(vertices[edge[0]], vertices[edge[1]], vertices[edge[2]]);
+                double[] normal = calculateDistortedNormal(vertices[edge[0]], vertices[edge[1]], vertices[edge[2]]);
                 // Через векторное произведение определяем
                 // сонаправлен ли вектор нормали и вектор взгляда наблюдателя
                 visibleFaces[t] = isVisible(normal, cameraDirection);
@@ -176,24 +176,35 @@ public class HexahedronProjection extends JFrame {
             return dotProduct > 0;
         }
 
-        static double[][] multiplyMatrix(double[][] firstMatrix, double[][] SecondMatrix) {
-            if (firstMatrix[0].length != SecondMatrix.length) {
+        static double[][] multiplyMatrix(double[][] firstMatrix, double[][] matrixB) {
+            if (firstMatrix[0].length != matrixB.length) {
                 throw new IllegalArgumentException("Матрицы нельзя перемножить");
             }
-            double[][] result = new double[firstMatrix.length][SecondMatrix[0].length];
+            double[][] result = new double[firstMatrix.length][matrixB[0].length];
             for (int i = 0; i < result.length; i++) {
                 for (int j = 0; j < result[0].length; j++) {
                     for (int k = 0; k < firstMatrix[0].length; k++) {
-                        result[i][j] += firstMatrix[i][k] * SecondMatrix[k][j];
+                        result[i][j] += firstMatrix[i][k] * matrixB[k][j];
                     }
                 }
             }
             return result;
         }
 
-        static double[] calculateNormal(double[] p1, double[] p2, double[] p3) {
-            double[] v1 = {p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]};
-            double[] v2 = {p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]};
+        public double[] calculateDistortedNormal(double[] p1, double[] p2, double[] p3) {
+            double p1ScaleCoeff =  center[2] / (center[2] - p1[2]);
+            double p2ScaleCoeff =  center[2] / (center[2] - p2[2]);
+            double p3ScaleCoeff =  center[2] / (center[2] - p3[2]);
+
+            double[] v1 = {
+                    p2[0] * p2ScaleCoeff - p1[0] * p1ScaleCoeff,
+                    p2[1] * p2ScaleCoeff - p1[1] * p1ScaleCoeff,
+                    p2[2] * p2ScaleCoeff - p1[2] * p1ScaleCoeff};
+
+            double[] v2 = {
+                    p3[0] * p3ScaleCoeff- p1[0] * p1ScaleCoeff,
+                    p3[1] * p3ScaleCoeff - p1[1] * p1ScaleCoeff,
+                    p3[2] * p3ScaleCoeff - p1[2] * p1ScaleCoeff};
 
             return new double[]{
                     v1[1] * v2[2] - v1[2] * v2[1],
