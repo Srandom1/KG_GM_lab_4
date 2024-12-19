@@ -1,222 +1,242 @@
 import javax.swing.*;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.Point2D;
+import java.util.HashMap;
 
 public class HexahedronProjection extends JFrame {
-    private double rotationX = 0, rotationY = 0, rotationZ = 0, size = 100;
-    private double[] center = {0, 0, -500};
+    private double rotationX = 0, rotationY = 0, rotationZ = 0, size = 20;
+    private double[] center = {0, 0, 500};
+    HashMap<String, JSpinner> spinnerMap = new HashMap<>();
 
     public HexahedronProjection() {
-        setTitle("Проецирование гексаэдра");
-        setSize(800, 600);
+        setTitle("Проецирование гексаэдера");
+        setSize(1200, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         JPanel controlPanel = createControlPanel();
         add(controlPanel, BorderLayout.WEST);
 
-        HexahedronPanel hexahedronPanel = new HexahedronPanel();
+        HexahedronPanel hexahedronPanel = new HexahedronPanel(this);
+        hexahedronPanel.setFocusable(true);
         add(hexahedronPanel, BorderLayout.CENTER);
+
+        HexahedronProjection instance = this;
+
+        this.requestFocusInWindow();
+
+        addKeyListener(new KeyAdapter() {
+            boolean isXPressed = false;
+            boolean isZPressed = false;
+            boolean isCPressed = false;
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+
+                int sizeStep = 5;
+                int step = 5;
+                int smoothTurning = 60;
+
+                if (keyCode == KeyEvent.VK_X) {
+                    isXPressed = true;
+                } else if (keyCode == KeyEvent.VK_Z) {
+                    isZPressed = true;
+                } else if (keyCode == KeyEvent.VK_C) {
+                    isCPressed = true;
+                }
+
+                if (isZPressed) {
+                    if (keyCode == KeyEvent.VK_LEFT) {
+                        rotationZ -= Math.PI / smoothTurning;
+                    } else if (keyCode == KeyEvent.VK_RIGHT) {
+                        rotationZ += Math.PI / smoothTurning;
+                    }
+                } else if (isXPressed) {
+                    if (keyCode == KeyEvent.VK_LEFT) {
+                        rotationX -= Math.PI / smoothTurning;
+                    } else if (keyCode == KeyEvent.VK_RIGHT) {
+                        rotationX += Math.PI / smoothTurning;
+                    }
+                } else if (isCPressed) {
+                    if (keyCode == KeyEvent.VK_LEFT) {
+                        rotationY -= Math.PI / smoothTurning;
+                    } else if (keyCode == KeyEvent.VK_RIGHT) {
+                        rotationY += Math.PI / smoothTurning;
+                    }
+                }
+
+                if (isXPressed || isCPressed || isZPressed) {
+                    updateSpinners();
+                    repaint();
+                    return;
+                }
+
+                if (keyCode == KeyEvent.VK_LEFT) {
+                    center[0] -= step;
+                } else if (keyCode == KeyEvent.VK_RIGHT) {
+                    center[0] += step;
+                } else if (keyCode == KeyEvent.VK_UP) {
+                    center[1] -= step;
+                } else if (keyCode == KeyEvent.VK_DOWN) {
+                    center[1] += step;
+                } else if (keyCode == KeyEvent.VK_PAGE_UP) {
+                    size += sizeStep;
+                } else if (keyCode == KeyEvent.VK_PAGE_DOWN) {
+                    size -= sizeStep;
+                }
+
+                updateSpinners();
+                repaint();
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+
+                if (keyCode == KeyEvent.VK_X) {
+                    isXPressed = false;
+                } else if (keyCode == KeyEvent.VK_Z) {
+                    isZPressed = false;
+                } else if (keyCode == KeyEvent.VK_C) {
+                    isCPressed = false;
+                }
+            }
+        });
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                instance.requestFocusInWindow();
+            }
+        });
+        hexahedronPanel.requestFocusInWindow();
     }
 
     private JPanel createControlPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
-        panel.add(createSlider("Размер", 50, 300, (int) size, e -> {
-            size = ((JSlider) e.getSource()).getValue();
+        panel.add(createLabeledSpinner("Размер", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) size, e -> {
+            size = (Integer) ((JSpinner) e.getSource()).getValue();
             repaint();
         }));
-        panel.add(createSlider("Поворот X", 0, 360, 0, e -> {
-            rotationX = Math.toRadians(((JSlider) e.getSource()).getValue());
+        panel.add(createLabeledSpinner("Поворот X", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) Math.toDegrees(rotationX), e -> {
+            rotationX = Math.toRadians((Integer) ((JSpinner) e.getSource()).getValue());
             repaint();
         }));
-        panel.add(createSlider("Поворот Y", 0, 360, 0, e -> {
-            rotationY = Math.toRadians(((JSlider) e.getSource()).getValue());
+        panel.add(createLabeledSpinner("Поворот Y", Integer.MIN_VALUE, Integer.MAX_VALUE,(int) Math.toDegrees(rotationY), e -> {
+            rotationY = Math.toRadians((Integer) ((JSpinner) e.getSource()).getValue());
             repaint();
         }));
-        panel.add(createSlider("Поворот Z", 0, 360, 0, e -> {
-            rotationZ = Math.toRadians(((JSlider) e.getSource()).getValue());
+        panel.add(createLabeledSpinner("Поворот Z", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) Math.toDegrees(rotationZ), e -> {
+            rotationZ = Math.toRadians((Integer) ((JSpinner) e.getSource()).getValue());
             repaint();
         }));
-        panel.add(createSlider("Центр X", -500, 500, 0, e -> {
-            center[0] = ((JSlider) e.getSource()).getValue();
+        panel.add(createLabeledSpinner("Центр X", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) center[0], e -> {
+            center[0] = (Integer) ((JSpinner) e.getSource()).getValue();
             repaint();
         }));
-        panel.add(createSlider("Центр Y", -500, 500, 0, e -> {
-            center[1] = ((JSlider) e.getSource()).getValue();
+        panel.add(createLabeledSpinner("Центр Y", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) center[1], e -> {
+            center[1] = (Integer) ((JSpinner) e.getSource()).getValue();
             repaint();
         }));
-        panel.add(createSlider("Центр Z", -1000, 0, -1000, e -> {
-            center[2] = ((JSlider) e.getSource()).getValue();
+        panel.add(createLabeledSpinner("Центр Z", Integer.MIN_VALUE, Integer.MAX_VALUE, (int) center[2], e -> {
+            center[2] = (Integer) ((JSpinner) e.getSource()).getValue();
             repaint();
         }));
+
+        JButton helpButton = new JButton("Руководство");
+        helpButton.setSize(200, 30);
+        helpButton.addActionListener(e -> showHelpDialog());
+        panel.setSize(300, this.getHeight());
+        panel.add(helpButton);
+
 
         return panel;
     }
 
-    private JSlider createSlider(String label, int min, int max, int initial, ActionListener listener) {
-        JSlider slider = new JSlider(JSlider.HORIZONTAL, min, max, initial);
-        slider.setMajorTickSpacing((max - min) / 10);
-        slider.setPaintTicks(true);
-        slider.addChangeListener(e -> listener.actionPerformed(new ActionEvent(slider, ActionEvent.ACTION_PERFORMED, null)));
-        slider.setBorder(BorderFactory.createTitledBorder(label));
-        return slider;
+    private JPanel createLabeledSpinner(String label, int min, int max, int initial, ChangeListener listener) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new FlowLayout(FlowLayout.LEFT));
+
+        JLabel jLabel = new JLabel(label);
+        JSpinner spinner = new JSpinner(new SpinnerNumberModel(initial, min, max, 1));
+        spinner.addChangeListener(listener);
+
+        panel.add(jLabel);
+        panel.add(spinner);
+        spinner.setPreferredSize(new Dimension(45, 15));
+        spinnerMap.put(label, spinner);
+
+        return panel;
     }
 
-    private class HexahedronPanel extends JPanel {
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            double[] cameraDirection = getCameraDirection();
-
-            // Вершины гексаэдра
-            double[][] vertices = {
-                    {0.4, -0.4, 0.4, 1}, {-0.4, -0.4, 0.4, 1},
-                    {-0.4, -0.4, -0.4, 1}, {0.4, -0.4, -0.4, 1},
-                    {0.4, 0.4, 0.4, 1}, {-0.4, 0.4, 0.4, 1},
-                    {-0.4, 0.4, -0.4, 1}, {0.4, 0.4, -0.4, 1}
-            };
-
-            //Грани гексаэдера
-            int[][] edges = {
-                    {3, 2, 1, 0},
-                    {0, 1, 5, 4},
-                    {0, 4, 7, 3},
-                    {7, 6, 2, 3},
-                    {1, 2, 6, 5},
-                    {4, 5, 6, 7}
-            };
-
-            // Масштабирование
-            for (double[] vertex : vertices) {
-                vertex[0] *= size / 2;
-                vertex[1] *= size / 2;
-                vertex[2] *= size / 2;
-            }
-
-            // Поворот
-            for (double[] vertex : vertices) {
-                rotate(vertex, rotationX, rotationY, rotationZ);
-            }
-
-            // Центр панели
-            int centerX = getWidth() / 2;
-            int centerY = getHeight() / 2;
-
-            boolean[] visibleFaces = new boolean[edges.length];
-
-            for (int t = 0; t < edges.length; t++) {
-                int[] edge = edges[t];
-                // Вычисляем вектор нормали поверхности грани
-                double[] normal = calculateDistortedNormal(vertices[edge[0]], vertices[edge[1]], vertices[edge[2]]);
-                // Через векторное произведение определяем
-                // сонаправлен ли вектор нормали и вектор взгляда наблюдателя
-                visibleFaces[t] = isVisible(normal, cameraDirection);
-            }
-
-
-            g2d.setColor(Color.BLACK);
-            g2d.setStroke(new BasicStroke(2));
-
-            // Отрисовка проекций
-            for (int i = 0; i < visibleFaces.length; i++) {
-                if (visibleFaces[i]) {
-                    // Если грань видимая задаем, что ее ребра будем рисовать
-                    // черным цветом и жирными линиями
-                    g2d.setColor(Color.BLACK);
-                    g2d.setStroke(new BasicStroke(3));
-                } else {
-                    // Если грань невидимая, рисуем тонкими линиями, серым цветом
-                    g2d.setColor(Color.BLACK);
-                    g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 5, new float[]{10, 20}, 1));
-                }
-
-                // Пробегаемся по всем ребрам грани и рисуем их
-                for (int j = 0; j < edges[i].length; j++) {
-                    int k = (j + 1) % edges[i].length;
-                    Point2D p1 = centralProjection(vertices[edges[i][j]]);
-                    Point2D p2 = centralProjection(vertices[edges[i][k]]);
-                    g2d.drawLine(centerX + (int) p1.getX(), centerY + (int) p1.getY(), centerX + (int) p2.getX(), centerY + (int) p2.getY());
-                }
+    private void updateSpinners() {
+        for (String label : spinnerMap.keySet()) {
+            switch (label) {
+                case "Размер":
+                    spinnerMap.get(label).setValue((int) size);
+                    break;
+                case "Поворот X":
+                    spinnerMap.get(label).setValue((int) Math.toDegrees(rotationX));
+                    break;
+                case "Поворот Y":
+                    spinnerMap.get(label).setValue((int) Math.toDegrees(rotationY));
+                    break;
+                case "Поворот Z":
+                    spinnerMap.get(label).setValue((int) Math.toDegrees(rotationZ));
+                    break;
+                case "Центр X":
+                    spinnerMap.get(label).setValue((int) center[0]);
+                    break;
+                case "Центр Y":
+                    spinnerMap.get(label).setValue((int) center[1]);
+                    break;
+                case "Центр Z":
+                    spinnerMap.get(label).setValue((int) center[2]);
+                    break;
             }
         }
-
-        private double[] getCameraDirection(){
-            return new double[]{-center[0], -center[1], -center[2]};
-        }
-        private void rotate(double[] vertex, double angleX, double angleY, double angleZ) {
-            // Поворот вокруг оси X
-            double tempY = vertex[1] * Math.cos(angleX) - vertex[2] * Math.sin(angleX);
-            double tempZ = vertex[1] * Math.sin(angleX) + vertex[2] * Math.cos(angleX);
-            vertex[1] = tempY;
-            vertex[2] = tempZ;
-
-            // Поворот вокруг оси Y
-            double tempX = vertex[0] * Math.cos(angleY) + vertex[2] * Math.sin(angleY);
-            vertex[2] = -vertex[0] * Math.sin(angleY) + vertex[2] * Math.cos(angleY);
-            vertex[0] = tempX;
-
-            // Поворот вокруг оси Z
-            tempX = vertex[0] * Math.cos(angleZ) - vertex[1] * Math.sin(angleZ);
-            vertex[1] = vertex[0] * Math.sin(angleZ) + vertex[1] * Math.cos(angleZ);
-            vertex[0] = tempX;
-        }
-
-        private Point2D centralProjection(double[] vertex) {
-            double k = center[2] / (center[2] - vertex[2]);
-            return new Point2D.Double(k * (vertex[0] - center[0]), k * (vertex[1] - center[1]));
-        }
-
-        static boolean isVisible(double[] normal, double[] cameraDir) {
-            double dotProduct = normal[0] * cameraDir[0] + normal[1] * cameraDir[1] + normal[2] * cameraDir[2];
-            return dotProduct > 0;
-        }
-
-        static double[][] multiplyMatrix(double[][] firstMatrix, double[][] matrixB) {
-            if (firstMatrix[0].length != matrixB.length) {
-                throw new IllegalArgumentException("Матрицы нельзя перемножить");
-            }
-            double[][] result = new double[firstMatrix.length][matrixB[0].length];
-            for (int i = 0; i < result.length; i++) {
-                for (int j = 0; j < result[0].length; j++) {
-                    for (int k = 0; k < firstMatrix[0].length; k++) {
-                        result[i][j] += firstMatrix[i][k] * matrixB[k][j];
-                    }
-                }
-            }
-            return result;
-        }
-
-        public double[] calculateDistortedNormal(double[] p1, double[] p2, double[] p3) {
-            double p1ScaleCoeff =  center[2] / (center[2] - p1[2]);
-            double p2ScaleCoeff =  center[2] / (center[2] - p2[2]);
-            double p3ScaleCoeff =  center[2] / (center[2] - p3[2]);
-
-            double[] v1 = {
-                    p2[0] * p2ScaleCoeff - p1[0] * p1ScaleCoeff,
-                    p2[1] * p2ScaleCoeff - p1[1] * p1ScaleCoeff,
-                    p2[2] * p2ScaleCoeff - p1[2] * p1ScaleCoeff};
-
-            double[] v2 = {
-                    p3[0] * p3ScaleCoeff- p1[0] * p1ScaleCoeff,
-                    p3[1] * p3ScaleCoeff - p1[1] * p1ScaleCoeff,
-                    p3[2] * p3ScaleCoeff - p1[2] * p1ScaleCoeff};
-
-            return new double[]{
-                    v1[1] * v2[2] - v1[2] * v2[1],
-                    v1[2] * v2[0] - v1[0] * v2[2],
-                    v1[0] * v2[1] - v1[1] * v2[0],
-            };
-        }
-
-
     }
+
+    public double getRotationX() {
+        return rotationX;
+    }
+
+    public double getRotationY() {
+        return rotationY;
+    }
+
+    public double getRotationZ() {
+        return rotationZ;
+    }
+
+    public double getSizeValue() {
+        return size;
+    }
+
+    public double[] getCenter() {
+        return center;
+    }
+
+    private void showHelpDialog() {
+        String message = "Руководство к использованию\n" +
+                "Управление: \n" +
+                "1. Используйте стрелки для изменения центра проекции (положения гексаэдера).\n" +
+                "2. При зажатых клавишах Z,X,C и использовании стрелок, куб будет вращатся вокург соотве" +
+                "тствующей оси.\n (Кнопка C отвечает за Y. Была выбрана, так как находится рядом с X и Z на клавиатуре) \n" +
+                "3. PAGE UP и PAGE DOWN изменяют размер.\n" +
+                "4. Спиннеры слева изменяют параметры вручную.\n";
+        JOptionPane.showMessageDialog(this, message, "Руководство", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new HexahedronProjection().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            HexahedronProjection projection = new HexahedronProjection();
+            projection.setVisible(true);
+        });
     }
 }
 
